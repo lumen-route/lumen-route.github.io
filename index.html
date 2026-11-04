@@ -1755,6 +1755,12 @@ $('reviewBtn').addEventListener('click',()=>{ A.click(); setReview(true); });
 $('reviewBack').addEventListener('click',()=>{ A.click(); setReview(false); });
 [0,1,2,4].forEach(k=>{ $('sp'+k).addEventListener('click',()=>setSpeed(k)); $('sp'+k).addEventListener('pointerenter',()=>A.hover()); });
 $('audioBtn').addEventListener('click',()=>{ $('audioPop').hidden=!$('audioPop').hidden; A.click(); });
+// a tap outside closes the sound panel; on the map that tap does nothing else
+document.addEventListener('pointerdown',e=>{
+  if($('audioPop').hidden||$('audioPop').contains(e.target)||$('audioBtn').contains(e.target)) return;
+  $('audioPop').hidden=true;
+  if(e.target===cv) e.stopPropagation();
+},true);
 function applyVol(){
   A.sfxVol=+$('volSfx').value/100; A.bgmVol=+$('volBgm').value/100;
   if(A.ctx){ A.sfxBus.gain.setTargetAtTime(A.sfxVol,A.now(),.02); A.bgmBus.gain.setTargetAtTime(A.bgmVol,A.now(),.02); }
