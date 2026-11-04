@@ -228,7 +228,7 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
   </div>
   <div id="audioBack" hidden></div>
   <div id="audioPop" hidden>
-    <div id="buildTag">v18 2面試作</div>
+    <div id="buildTag">v19 2面試作</div>
     <label>効果音<input id="volSfx" type="range" min="0" max="100" value="85"></label>
     <label>音楽<input id="volBgm" type="range" min="0" max="100" value="70"></label>
   </div>
@@ -670,6 +670,7 @@ function closeDay(label){
 function buildLog(){
   const L=[];
   L.push(`LUMEN ROUTE プレイログ ${G.stage===2?'2面 夜を追え':'1面 日本'}`);
+  L.push(`画質 ${qual}/2 描画${cv.width}x${cv.height} 画面${W}x${H} 倍率${(devicePixelRatio||1).toFixed(2)}`);
   L.push(`結果: ${$('overReason').textContent}`);
   L.push(`判定: ${$('overCause').textContent||'なし'}`);
   if(G.goal) L.push(`クリア条件: ${G.goal.name} ${G.cleared?'達成('+G.clearAt+')':'未達 '+G.goal.val()}`);
@@ -1326,15 +1327,18 @@ const bgCv=document.createElement('canvas');
 const ba=bloomA.getContext('2d',{alpha:false}), bb=bloomB.getContext('2d',{alpha:false});
 const hasFilter=typeof ctx.filter==='string';
 const RING_MAX=[10,22,40], SPARK_MAX=[40,110,220], DPR_MUL=[.6,.8,1];
-let qual=2, frameAvg=0, qualT=0;  // drawing quality, lowered once if a device cannot keep up
+let qual=2, frameAvg=.016, qualT=0, playT=0, qualRose=false, qualLock=false;  // drawing quality follows what the device can keep up with
 function watchFrames(raw,now){
-  if(raw>.25||state!=='play') return;            // ignore tab switches and menus
+  if(state!=='play'){ playT=now; frameAvg=.016; return; }   // menus do not count
+  if(raw>.25||now-playT<3000) return;            // ignore tab switches and the jolt of starting a game
   frameAvg+=(raw-frameAvg)*.04;
-  if(qual>0&&frameAvg>.03&&now-qualT>3500){ qual--; qualT=now; frameAvg=.016; resize(); }
+  if(qual>0&&frameAvg>.03&&now-qualT>5000){ if(qualRose) qualLock=true; qual--; qualT=now; frameAvg=.016; resize(); }
+  else if(qual<2&&!qualLock&&frameAvg<.02&&now-qualT>20000){ qual++; qualRose=true; qualT=now; resize(); }   // a passing slowdown should not cost quality for the rest of the game
 }
 let W=0,H=0,DPR=1;
 function resize(){
-  DPR=Math.min(devicePixelRatio||1,innerWidth>1800?1.25:1.75)*DPR_MUL[qual];
+  const dev=devicePixelRatio||1, cap=Math.min(innerWidth>1000?2:1.75,Math.sqrt(8.3e6/(innerWidth*innerHeight)));
+  DPR=Math.max(Math.min(dev,1),Math.min(dev,cap)*DPR_MUL[qual]);   // never below one canvas pixel per screen pixel
   W=innerWidth; H=innerHeight;
   cv.width=W*DPR|0; cv.height=H*DPR|0;
   bloomA.width=Math.max(2,cv.width>>2); bloomA.height=Math.max(2,cv.height>>2);
