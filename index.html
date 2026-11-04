@@ -85,8 +85,28 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
 
 #hint{position:absolute;left:50%;transform:translateX(-50%);max-width:min(620px,calc(100vw - 32px));padding:7px 15px;font-size:14px;font-weight:700;color:var(--txt);background:rgba(11,9,42,.82);border:1px solid var(--line-hi);text-align:center;pointer-events:none;text-wrap:balance;white-space:normal;width:max-content}
 #hint.warn{border-color:var(--red);color:#ffd3db}
+#hint,#banner,.toast{pointer-events:auto;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#hint::after{content:'×';margin-left:8px;color:var(--dim);font-weight:400}
+.toast{position:relative;padding-right:24px!important}
+.toast::after{content:'×';position:absolute;right:8px;top:6px;color:var(--dim)}
+#banner .bx{color:var(--dim);font-weight:400;padding-left:2px}
+#banner .bm{display:none}
+#banner.mini{left:auto;right:max(16px,env(safe-area-inset-right,0px));transform:none;padding:4px 8px;gap:8px;font-size:12px}
+#banner.mini .bt,#banner.mini .bx{display:none}
+#banner.mini .bm{display:inline}
+.tool.guide{animation:guideTool .8s ease-in-out infinite alternate}
+@keyframes guideTool{from{box-shadow:0 0 0 1px var(--am)}to{box-shadow:0 0 0 3px var(--am),0 0 18px var(--am)}}
+#pins{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.pin{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:5px;height:30px;padding:0 9px;margin:-15px 0 0 -32px;background:rgba(40,28,4,.92);border:1px solid var(--am);box-shadow:0 0 12px rgba(255,210,63,.6);color:var(--am);font-family:var(--f-num);font-size:13px;font-weight:700;white-space:nowrap}
+.pin i{display:block;width:0;height:0;border-left:9px solid var(--am);border-top:5px solid transparent;border-bottom:5px solid transparent}
+#coach{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(5,3,22,.55);cursor:pointer;-webkit-tap-highlight-color:transparent}
+#coach[hidden]{display:none}
+#coachBox{box-sizing:border-box;width:min(380px,100%);padding:16px;background:var(--panel);border:1px solid var(--am);box-shadow:0 0 24px rgba(255,210,63,.35)}
+#coachBox h3{margin:0 0 8px;font-size:17px;color:var(--am)}
+#coachBox p{margin:0 0 14px;font-size:14px;line-height:1.65;color:var(--txt)}
+#coachOk{display:block;width:100%;min-height:44px;border:1px solid var(--am);color:var(--am);font-family:var(--f-jp);font-size:15px;font-weight:700}
 
-#banner{pointer-events:none;position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 12px 8px 15px;width:max-content;max-width:calc(100vw - 32px);background:rgba(50,6,40,.88);border:1px solid var(--mg);box-shadow:0 0 18px rgba(255,47,179,.5);font-size:14px;font-weight:700;z-index:3}
+#banner{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 12px 8px 15px;width:max-content;max-width:calc(100vw - 32px);background:rgba(50,6,40,.88);border:1px solid var(--mg);box-shadow:0 0 18px rgba(255,47,179,.5);font-size:14px;font-weight:700;z-index:3}
 #banner.good{background:rgba(6,44,50,.88);border-color:var(--cy);box-shadow:0 0 18px rgba(39,243,255,.45)}
 .act{pointer-events:auto;padding:5px 11px;border:1px solid currentColor;color:var(--am);font-family:var(--f-jp);font-size:13px;font-weight:700;white-space:nowrap;transition:background .1s,color .1s}
 .act:hover:not(:disabled){background:var(--am);color:var(--ink)}
@@ -198,7 +218,7 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
   </div>
   <div id="audioBack" hidden></div>
   <div id="audioPop" hidden>
-    <div id="buildTag">v15</div>
+    <div id="buildTag">v16</div>
     <label>効果音<input id="volSfx" type="range" min="0" max="100" value="85"></label>
     <label>音楽<input id="volBgm" type="range" min="0" max="100" value="70"></label>
   </div>
@@ -208,6 +228,8 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
   <div id="insp" hidden></div>
   <div id="hint" hidden></div>
   <div id="alarmEdge" hidden></div>
+  <div id="pins"></div>
+  <div id="coach" hidden><div id="coachBox"><h3 id="coachTitle"></h3><p id="coachBody"></p><button id="coachOk">わかった</button></div></div>
   <div id="zoom" hidden>
     <button id="zoomIn" title="拡大 (+)" aria-label="拡大">+</button>
     <button id="zoomOut" title="縮小 (-)" aria-label="縮小">−</button>
@@ -591,7 +613,7 @@ function addCity(x,y,silent){
   n.bars=Array.from({length:5},()=>rand(.35,1));
   n.phase=rand(0,6.28);
   G.nodes.push(n); G.dirty=true;
-  if(!silent&&!G.demo){ logEv(`新規エリア ${n.code}`); ring(x,y,'#e4e9ff',60); A.city(); toast(`新規エリア ${n.code}`,'回線の接続を待っています'); }
+  if(!silent&&!G.demo){ logEv(`新規エリア ${n.code}`); ring(x,y,'#ffd23f',90); A.city(); toast(`新規エリア ${n.code}`,'回線の接続を待っています'); coach('city','新しい街が発生しました','黄色く光っている街は、まだつながっていません。街から線を引いてつなぐと、売上が増えます。'); }
   return n;
 }
 function addDC(s,x,y,silent){
@@ -937,6 +959,9 @@ function scheduleWorld(){
       logEv(`新サービス ${SVC[s].name}`);
       toast(`新サービス: ${SVC[s].name}`,`需要が立ち上がります。開業支援金 ${yen(grant)}`,'gold');
       buildToolbar();
+      if(s===1) coach('svc1','動画が始まりました','△のパケットは動画DCでしか処理できません。下のボタンで動画DCを建て、線でつなぎましょう。');
+      if(s===2) coach('svc2','ゲームが始まりました','◇のパケットは納期が短く、単価が高めです。ゲームDCは街の近くに建てましょう。');
+      if(s===3) coach('svc3','AIが始まりました','六角形のパケットは処理が重く、単価が最も高いです。AI DCは増強して使いましょう。');
     }
   }
   // new areas
@@ -956,9 +981,18 @@ function scheduleWorld(){
     G.nextEvent=G.day*DAY+DAY*rand(1,1.8);
   }
 }
+// is this world point clear of messages and buttons when the whole map is shown?
+function uiClear(x,y){
+  const ins=hudInsets(), ah=H-ins.t-ins.b, s=Math.min(W/G.w,ah/G.h);
+  const sx=W/2+(x-G.w/2)*s, sy=ins.t+ah/2+(y-G.h/2)*s;
+  if(sy<ins.t+90||sy>H-ins.b-105) return false;
+  const z=$('zoom').getBoundingClientRect();
+  return !(z.width&&sx>z.left-52&&sy>z.top-52&&sy<z.bottom+62);
+}
 function findSpot(minD){
   for(let i=0;i<60;i++){
     const x=rand(90,G.w-90),y=rand(80,G.h-80);
+    if(i<=40&&!uiClear(x,y)) continue;
     if(!G.nodes.some(n=>Math.hypot(n.x-x,n.y-y)<minD)) return {x,y};
     if(i>40) minD*=.97;
   }
@@ -1021,6 +1055,55 @@ function lossCause(){
   if(dc) return head+`つながる先の ${dc.code} の処理が限界でした。`;
   return head+'この街から先の経路が混雑していました。';
 }
+const TOUCH=matchMedia('(pointer:coarse)').matches, TAP=TOUCH?'タップ':'クリック';
+const linkUse=l=>Math.max(l.util[0],l.util[1]);
+function adviseLink(l){
+  const nm=`${l.a.code}–${l.b.code}`;
+  if(l.tier<2) return {txt:`${nm} の線が混雑。線を${TAP}して増強しましょう（${yen(COST.linkUp(l.len,l.tier+1))}）`,l,cap:TAP};
+  return {txt:`${nm} は最大帯域でも混雑。${l.a.code} から別の線を引きましょう`,n:l.a,cap:'ここから線を引く'};
+}
+function adviseDC(d){
+  if(d.lvl<COST.dcUp.length) return {txt:`${d.code} の処理が限界。${TAP}して増強しましょう（${yen(COST.dcUp[d.lvl])}）`,n:d,cap:TAP};
+  return {txt:`${d.code} は最大レベルで限界。同じサービスのDCを増設して、直接つなぎましょう`,tool:'dc'+d.svc};
+}
+// what should the player do about service s overflowing at node n?
+function adviceFor(n,s){
+  const name=SVC[s].name;
+  if(!hasService(s)) return {txt:`${name} のDCがありません。下の「${name} DC」を押して、地図に建てましょう`,tool:'dc'+s};
+  const lone=G.nodes.find(d=>d.type==='dc'&&d.svc===s&&!d.adj.length);
+  if(lone) return {txt:`${lone.code} がどこにもつながっていません。ここから街へ線を引きましょう`,n:lone,cap:'ここから線を引く'};
+  if(n.svc!==s&&!n.route[s]) return {txt:`${n.code} から ${name} DCへの道がありません。${n.code} から線を引きましょう`,n,cap:'ここから線を引く'};
+  const cut=n.adj.find(l=>l.down);
+  if(cut) return {txt:`${cut.a.code}–${cut.b.code} が断線中です。復旧するか、別の線を引きましょう`,l:cut};
+  let cur=n;
+  for(let i=0;i<16;i++){
+    if(cur.type==='dc'&&cur.svc===s){ if(cur.work.length>DCX.cap[cur.lvl]*.5) return adviseDC(cur); break; }
+    const l=cur.route[s]; if(!l) break;
+    if(linkUse(l)>.7) return adviseLink(l);
+    cur=other(l,cur);
+  }
+  return {txt:`${n.code} の ${name} が溢れています。${n.code} から ${name} DCへ直接線を引きましょう`,n,cap:'ここから線を引く'};
+}
+function drawGuide(t){
+  const g=G.guide; if(!g||G.over||reviewing) return;
+  const a=.55+.45*Math.sin(t*7);
+  ctx.strokeStyle='#ffd23f'; ctx.globalAlpha=a;
+  if(g.n&&!(sel&&sel.o===g.n)){ const r=nodeRadius(g.n)*1.34+22+5*Math.sin(t*7); ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(g.n.x,g.n.y,r,0,6.2832); ctx.stroke(); }
+  if(g.l&&!(sel&&sel.o===g.l)){ ctx.lineWidth=11; ctx.beginPath(); ctx.moveTo(g.l.a.x,g.l.a.y); ctx.lineTo(g.l.b.x,g.l.b.y); ctx.stroke(); }
+  ctx.globalAlpha=1;
+}
+function drawGuideCaption(){
+  const g=G.guide; if(!g||!g.cap||G.over||reviewing||sel) return;
+  const o=g.n?{x:g.n.x,y:g.n.y-nodeRadius(g.n)*1.34-30}:g.l?{x:(g.l.a.x+g.l.b.x)/2,y:(g.l.a.y+g.l.b.y)/2-16}:null;
+  if(!o) return;
+  const px=clamp(view.ox+o.x*view.s,70,W-70), py=view.oy+o.y*view.s;
+  ctx.font="700 13px 'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',Meiryo,sans-serif";
+  const w=ctx.measureText(g.cap).width+14;
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='rgba(40,28,4,.92)'; ctx.fillRect(px-w/2,py-11,w,22);
+  ctx.fillStyle='#ffd23f'; ctx.fillText(g.cap,px,py);
+  ctx.font="12px 'Share Tech Mono',ui-monospace,monospace";
+}
 function alarmNode(){
   let w=null,wv=0; for(const n of G.nodes){ const v=n.recBy[0]+n.recBy[1]+n.recBy[2]+n.recBy[3]; if(v>wv){ wv=v; w=n; } }
   return w;
@@ -1059,6 +1142,7 @@ function showResult(reason,cause){
     `<dt>事業規模</dt><dd style="font-family:var(--f-jp);font-size:15px">${G.rank}</dd>`;
   $('over').hidden=false;
   $('top').hidden=$('bottom').hidden=$('zoom').hidden=$('hint').hidden=$('insp').hidden=$('banner').hidden=true;
+  $('pins').innerHTML=''; pinEls.clear();
   $('toasts').innerHTML='';
   resize();
 }
@@ -1286,7 +1370,8 @@ function drawNode(n,t){
     ctx.fillStyle=n.viral>G.t?'#ffd23f':n.ddos>G.t?'#ffffff':'#a5dfff';
     n.bars.forEach((b,i)=>{ const h=r*.95*b*(1+.12*Math.sin(t*2+i+n.phase)), x=n.x+(i-2.5)*bw*1.2; ctx.fillRect(x,n.y+r*.52-h,bw*.72,h); });
     gauge(n,r+7,n.q.length/CITY_CAP,t);
-    if(!n.adj.length&&!G.demo){ const a=.5+.5*Math.sin(t*5); ctx.strokeStyle=`rgba(255,210,63,${a})`; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(n.x,n.y,r+17+a*5,0,6.2832); ctx.stroke(); }
+    if(!n.adj.length&&!G.demo){ const a=.5+.5*Math.sin(t*5); ctx.strokeStyle=`rgba(255,210,63,${a})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(n.x,n.y,r+17+a*5,0,6.2832); ctx.stroke();
+      const age=G.rt-n.born; if(age<7) for(let k=0;k<3;k++){ const p=(age*.6+k/3)%1; ctx.strokeStyle=`rgba(255,210,63,${(1-p)*.85})`; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(n.x,n.y,r+12+p*125,0,6.2832); ctx.stroke(); } }
   } else if(n.type==='dc'){
     const s=SVC[n.svc];
     ctx.strokeStyle=s.color; ctx.lineWidth=3; shapePath(ctx,s.shape,n.x,n.y,r); ctx.stroke();
@@ -1320,6 +1405,7 @@ function draw(t){
   for(const l of G.links) drawLink(l,t);
   for(const p of G.flying) drawPacket(p);
   for(const n of G.nodes) drawNode(n,t);
+  drawGuide(t);
   if(G.alarm&&!G.over){ const w=alarmNode(); if(w){ ctx.strokeStyle='#ff3b5c'; ctx.lineWidth=3; ctx.globalAlpha=.55+.45*Math.sin(t*12); ctx.beginPath(); ctx.arc(w.x,w.y,nodeRadius(w)*1.34+16+6*Math.sin(t*12),0,6.2832); ctx.stroke(); ctx.globalAlpha=1; } }
   if(reviewing){ const w=worstNode(); if(w){ ctx.strokeStyle='#ff3b5c'; ctx.lineWidth=2.5; ctx.setLineDash([8,7]); ctx.lineDashOffset=-t*24; ctx.beginPath(); ctx.arc(w.x,w.y,nodeRadius(w)*1.34+18,0,6.2832); ctx.stroke(); ctx.setLineDash([]); } }
   for(const r of G.rings){ const k=1-r.life; ctx.strokeStyle=r.c; ctx.globalAlpha=r.life*.8; ctx.lineWidth=1+r.life*2.4; ctx.beginPath(); ctx.arc(r.x,r.y,18+r.r*k,0,6.2832); ctx.stroke(); }
@@ -1349,10 +1435,13 @@ function draw(t){
   ctx.font="12px 'Share Tech Mono',ui-monospace,monospace";
   for(const n of G.nodes){
     const r=nodeRadius(n), px=view.ox+n.x*view.s, py=view.oy+n.y*view.s+(r*(n.type==='dc'?1.34:1)+18)*view.s+9;
-    ctx.fillStyle=n.type==='dc'?SVC[n.svc].color:'#e4e9ff';
+    const lonely=!n.adj.length&&!G.demo&&!reviewing;
+    ctx.fillStyle=lonely?'#ffd23f':n.type==='dc'?SVC[n.svc].color:'#e4e9ff';
     ctx.fillText(n.code,px,py);
+    if(lonely&&n.type==='city'){ ctx.font="700 11px 'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',Meiryo,sans-serif"; ctx.fillText('未接続',px,py+14); ctx.font="12px 'Share Tech Mono',ui-monospace,monospace"; }
     if(reviewing&&n.lost){ ctx.fillStyle='#ff8da0'; ctx.fillText('-'+n.lost.toLocaleString('en-US'),px,py+14); }
   }
+  drawGuideCaption();
   ctx.font="700 14px 'Share Tech Mono',ui-monospace,monospace";
   for(const f of G.floats){ ctx.globalAlpha=clamp(f.life*1.4,0,1); ctx.fillStyle=f.c; ctx.fillText(f.txt,view.ox+f.x*view.s,view.oy+f.y*view.s); }
   ctx.globalAlpha=1;
@@ -1628,12 +1717,20 @@ function refreshInspector(force){
   }
   el.querySelectorAll('button[data-c]').forEach(b=>b.disabled=G.credits<+b.dataset.c);
 }
+// pointerdown is the reliable path on phones; click covers keyboards and anything else
+function onTap(el,fn){
+  let t=0;
+  el.addEventListener('pointerdown',e=>{ if(e.target.closest('.act')) return; e.preventDefault(); e.stopPropagation(); t=performance.now(); fn(e); });
+  el.addEventListener('click',e=>{ if(e.target.closest('.act')) return; if(performance.now()-t>600) fn(e); });
+}
 function setBanner(txt,good,actLabel,act,can){
   const b=$('banner');
   if(!txt){ b.hidden=true; b.innerHTML=''; G&&(G.bannerCan=null); return; }
   b.className=good?'good':'';
-  b.innerHTML=`<span></span>`; b.firstChild.textContent=txt;
+  b.innerHTML=`<span class="bt"></span><span class="bm"></span>`; b.firstChild.textContent=txt;
+  b.children[1].textContent={storm:'断線',viral:'バズ',ddos:'DDoS'}[G.event&&G.event.kind]||'';
   if(actLabel){ const x=document.createElement('button'); x.className='act'; x.textContent=actLabel; x.addEventListener('click',act); b.appendChild(x); G.bannerCan=()=>{ x.disabled=!can(); }; } else G.bannerCan=null;
+  const bx=document.createElement('span'); bx.className='bx'; bx.textContent='×'; b.appendChild(bx);
   b.hidden=false;
 }
 function toast(title,body,cls){
@@ -1641,28 +1738,86 @@ function toast(title,body,cls){
   while(t.children.length>=3) t.firstChild.remove();
   const d=document.createElement('div'); d.className='toast '+(cls||'');
   d.innerHTML=`<b>${title}</b>${body}`;
+  onTap(d,()=>d.remove());
   t.appendChild(d);
   setTimeout(()=>d.remove(),cls==='gold'?7500:5500);
 }
 function hintText(){
-  if(G.alarm) return [alarmText(),true];
-  if(!G.links.length) return ['光る点線に沿って、街からデータセンターへドラッグして回線を敷きましょう'];
+  if(G.alarm){
+    const n=alarmNode(); if(!n) return {txt:`信頼度が急落中（${Math.round(G.trust)}%）`,warn:true,key:'alarm'};
+    let top=0; for(let i=1;i<4;i++) if(n.recBy[i]>n.recBy[top]) top=i;
+    const a=adviceFor(n,top);
+    return Object.assign(a,{txt:`信頼度 ${Math.round(G.trust)}%。${a.txt}`,warn:true,key:'alarm'});
+  }
+  if(!G.links.length) return {txt:'光る点線に沿って、街からデータセンターへドラッグして回線を敷きましょう'};
   const iso=G.nodes.find(n=>n.type==='city'&&!n.adj.length);
-  for(let s=0;s<4;s++) if(unlocked(s)&&!hasService(s)&&serviceRamp(s)>0) return [`${SVC[s].name} のデータセンターがありません。下のボタンかキー ${s+1} で建設しましょう`,true];
+  for(let s=0;s<4;s++) if(unlocked(s)&&!hasService(s)&&serviceRamp(s)>0) return Object.assign(adviceFor(iso||G.nodes[0],s),{warn:true});
   const isoDC=G.nodes.find(n=>n.type==='dc'&&!n.adj.length);
-  if(isoDC) return [`${isoDC.code} が未接続です。DCからつなぎたい街へドラッグしましょう`,true];
+  if(isoDC) return {txt:`${isoDC.code} が未接続です。ここから、つなぎたい街へドラッグしましょう`,warn:true,n:isoDC,cap:'ここから線を引く'};
   const noRoute=G.nodes.find(n=>n.type==='city'&&n.adj.length&&[0,1,2,3].some(s=>serviceRamp(s)>0&&!n.route[s]));
-  if(noRoute) return [`${noRoute.code} から届かないサービスがあります。回線をつなぎましょう`,true];
-  if(iso) return [`新規エリア ${iso.code} を回線につなぎましょう`];
-  if(G.delivered<6) return ['パケットが届くと音が鳴り、収益が入ります'];
-  const hot=G.links.find(l=>!l.down&&Math.max(l.util[0],l.util[1])>.85&&l.tier<2);
-  if(hot) return [`${hot.a.code}–${hot.b.code} 間が混雑中。線をクリックして増強しましょう`];
+  if(noRoute) return {txt:`${noRoute.code} から届かないサービスがあります。回線をつなぎましょう`,warn:true,n:noRoute,cap:'ここから線を引く'};
+  if(iso) return {txt:`新規エリア ${iso.code} を回線につなぎましょう`,n:iso,cap:'ここから線を引く'};
+  if(G.delivered<6) return {txt:'パケットが届くと音が鳴り、収益が入ります'};
+  const hot=G.links.find(l=>!l.down&&linkUse(l)>.85&&l.tier<2);
+  if(hot) return adviseLink(hot);
   const dcHot=G.nodes.find(n=>n.type==='dc'&&n.work.length>DCX.cap[n.lvl]*.6);
-  if(dcHot) return [dcHot.lvl<COST.dcUp.length?`${dcHot.code} の処理が追いついていません。クリックして増強しましょう`:`${dcHot.code} は最大レベルで処理が限界です。同じサービスのDCを増設して直接つなぎましょう`,true];
-  const full=G.links.find(l=>!l.down&&Math.max(l.util[0],l.util[1])>.85);
-  if(full) return [`${full.a.code}–${full.b.code} 間は最大帯域でも混雑中。別ルートの回線を追加しましょう`];
-  if(G.delivered<60&&!G.upgrades) return ['回線の色は使用率です。青から黄、赤になると溢れはじめます'];
+  if(dcHot) return Object.assign(adviseDC(dcHot),{warn:true});
+  const full=G.links.find(l=>!l.down&&linkUse(l)>.85);
+  if(full) return adviseLink(full);
+  if(G.delivered<60&&!G.upgrades) return {txt:'回線の色は使用率です。青から黄、赤になると溢れはじめます'};
   return null;
+}
+// ---- first-time explanations: pause the game once per device
+let coachSeen={}; try{ coachSeen=JSON.parse(localStorage.getItem('lumenCoach')||'{}')||{}; }catch(e){}
+let coachQ=[], coachPrev=null;
+function coach(id,title,body){
+  if(G.demo||coachSeen[id]||coachQ.some(c=>c.id===id)) return;
+  coachQ.push({id,title,body});
+}
+function coachShow(){
+  if(!coachQ.length||state!=='play'||!$('coach').hidden) return;
+  const c=coachQ.shift();
+  coachSeen[c.id]=1; try{ localStorage.setItem('lumenCoach',JSON.stringify(coachSeen)); }catch(e){}
+  $('coachTitle').textContent=c.title; $('coachBody').textContent=c.body;
+  $('coach').hidden=false;
+  coachPrev=G.speed; setSpeed(0);
+}
+function coachClose(){
+  if($('coach').hidden) return;
+  $('coach').hidden=true;
+  setSpeed(coachPrev||0);
+}
+// ---- pins point at unconnected cities that are off screen or under a message
+const pinEls=new Map();
+function updatePins(){
+  const box=$('pins'), ins=hudInsets();
+  const rects=['hint','banner','zoom'].map($).filter(e=>!e.hidden).map(e=>e.getBoundingClientRect());
+  const keep=new Set();
+  if(state==='play') for(const n of G.nodes){
+    if(n.type!=='city'||n.adj.length) continue;
+    const sx=view.ox+n.x*view.s, sy=view.oy+n.y*view.s;
+    const inMap=sx>16&&sx<W-16&&sy>ins.t+16&&sy<H-ins.b-16;
+    if(inMap&&!rects.some(r=>sx>r.left-12&&sx<r.right+12&&sy>r.top-12&&sy<r.bottom+12)) continue;
+    let px=clamp(sx,48,W-48), py=clamp(sy,ins.t+24,H-ins.b-24);
+    for(const r of rects){
+      if(px>r.left-40&&px<r.right+40&&py>r.top-20&&py<r.bottom+20){
+        const up=r.top-24, dn=r.bottom+24;
+        if(up>ins.t+24&&(sy<(r.top+r.bottom)/2||dn>H-ins.b-24)) py=up;
+        else if(dn<H-ins.b-24) py=dn;
+        else px=r.left-52;
+      }
+    }
+    let el=pinEls.get(n);
+    if(!el){
+      el=document.createElement('button'); el.className='pin'; el.innerHTML='<i></i><span></span>'; el.lastChild.textContent=n.code;
+      onTap(el,()=>{ const i=hudInsets(); placeCam(n.x,n.y,W/2,i.t+(H-i.t-i.b)/2,Math.max(cam.z,1.7)); ring(n.x,n.y,'#ffd23f',80); A.click(); });
+      box.appendChild(el); pinEls.set(n,el);
+    }
+    el.style.transform=`translate(${px}px,${py}px)`;
+    el.firstChild.style.transform=`rotate(${Math.atan2(sy-py,sx-px)}rad)`;
+    keep.add(n);
+  }
+  for(const [n,el] of pinEls) if(!keep.has(n)){ el.remove(); pinEls.delete(n); }
 }
 function updateHud(){
   if(G.goal){ const p=clamp(G.goal.pct(),0,1); $('goalVal').textContent=G.cleared?'達成済み':G.goal.val(); $('goalFill').style.width=(G.cleared?100:p*100)+'%'; }
@@ -1684,7 +1839,17 @@ function updateHud(){
   document.querySelectorAll('.tool[data-cost]').forEach(b=>{ const k=b.dataset.cost; b.classList.toggle('poor',k!==''&&G.credits<+k); });
   if(G.bannerCan) G.bannerCan();
   const h=hintText(), he=$('hint');
-  if(h&&(!sel||G.alarm)){ he.textContent=h[0]; he.classList.toggle('warn',!!h[1]); he.hidden=false; } else he.hidden=true;
+  G.guide=h&&(h.n||h.l||h.tool)?h:null;
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('guide',!!(G.guide&&G.guide.tool===b.dataset.tool)));
+  const hkey=h?(h.key||h.txt.replace(/[\d,¥]+/g,'')):'';
+  if(G.hintOff&&(G.hintOff==='alarm'?!G.alarm:G.rt>G.hintOffUntil)) G.hintOff=null;
+  he.dataset.key=hkey;
+  if(h&&(!sel||G.alarm)&&G.hintOff!==hkey){ he.textContent=h.txt; he.classList.toggle('warn',!!h.warn); he.hidden=false; } else he.hidden=true;
+  if(G.trust<80) coach('trust','信頼度が下がっています','パケットが溢れると信頼度が下がり、0%で終了です。下の案内と黄色い印が、次に直す場所です。');
+  if(G.links.some(l=>!l.down&&linkUse(l)>.85&&l.tier<2)) coach('hot','回線が混雑しています',`線の色は使用率です。赤くなった線を${TAP}すると増強でき、多く流せるようになります。`);
+  coachShow();
+  { const bn=$('banner'), it=hudInsets().t+10; $('toasts').style.top=(it+2+(bn.hidden?0:bn.getBoundingClientRect().height+6))+'px'; }
+  updatePins();
   // sparkline
   const sc=$('spark'), sx=sc.getContext('2d'), w=sc.width, hh2=sc.height;
   sx.clearRect(0,0,w,hh2);
@@ -1704,7 +1869,7 @@ function startGame(){
   $('top').hidden=false; $('bottom').hidden=false; $('zoom').hidden=false;
   $('toasts').innerHTML='';
   newGame(false);
-  G.goal=goal; G.speed=0;
+  G.goal=goal; G.speed=0; coachQ=[]; $('coach').hidden=true;
   buildToolbar();          // height must settle before fit()
   resize(); fit();
   setBanner(null);
@@ -1741,6 +1906,13 @@ function frame(now){
 
 /* ========== wiring ========== */
 $('startBtn').addEventListener('click',startGame);
+onTap($('hint'),()=>{ G.hintOff=$('hint').dataset.key; G.hintOffUntil=G.rt+25; $('hint').hidden=true; A.click(); });
+onTap($('banner'),()=>{ const b=$('banner'); A.click();
+  if(b.classList.contains('mini')) b.classList.remove('mini');
+  else if(b.querySelector('.act')) b.classList.add('mini');
+  else b.hidden=true;
+});
+onTap($('coach'),coachClose);
 $('goalGo').addEventListener('click',()=>{ $('goalIntro').hidden=true; state='play'; setSpeed(1); });
 $('continueBtn').addEventListener('click',()=>{
   state='play'; $('over').hidden=true; $('top').hidden=false; $('bottom').hidden=false; $('zoom').hidden=false;
