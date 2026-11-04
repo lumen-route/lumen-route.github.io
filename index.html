@@ -1754,13 +1754,18 @@ $('logCopy').addEventListener('click',()=>{
 $('reviewBtn').addEventListener('click',()=>{ A.click(); setReview(true); });
 $('reviewBack').addEventListener('click',()=>{ A.click(); setReview(false); });
 [0,1,2,4].forEach(k=>{ $('sp'+k).addEventListener('click',()=>setSpeed(k)); $('sp'+k).addEventListener('pointerenter',()=>A.hover()); });
-$('audioBtn').addEventListener('click',()=>{ $('audioPop').hidden=!$('audioPop').hidden; A.click(); });
+$('audioBtn').addEventListener('click',()=>{
+  $('audioPop').style.top=($('audioBtn').getBoundingClientRect().bottom+6)+'px'; // the HUD wraps on phones
+  $('audioPop').hidden=!$('audioPop').hidden; A.click();
+});
 // a tap outside closes the sound panel; on the map that tap does nothing else
-document.addEventListener('pointerdown',e=>{
+const closeAudioPop=e=>{
   if($('audioPop').hidden||$('audioPop').contains(e.target)||$('audioBtn').contains(e.target)) return;
   $('audioPop').hidden=true;
   if(e.target===cv) e.stopPropagation();
-},true);
+};
+document.addEventListener('pointerdown',closeAudioPop,true);
+document.addEventListener('touchstart',closeAudioPop,{capture:true,passive:true});
 function applyVol(){
   A.sfxVol=+$('volSfx').value/100; A.bgmVol=+$('volBgm').value/100;
   if(A.ctx){ A.sfxBus.gain.setTargetAtTime(A.sfxVol,A.now(),.02); A.bgmBus.gain.setTargetAtTime(A.bgmVol,A.now(),.02); }
