@@ -53,6 +53,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--cy);outline-off
 svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-width:1.8}
 
 #audioPop{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(62px + env(safe-area-inset-top,0px));width:210px;padding:12px;background:var(--panel);border:1px solid var(--line-hi);display:grid;gap:8px;z-index:6}
+#audioBack{position:absolute;inset:0;z-index:5;touch-action:none}
+#buildTag{font-size:11px;color:var(--dim);text-align:right;font-family:var(--f-num)}
 #audioPop label{display:grid;gap:3px;font-size:12px;color:var(--dim)}
 #audioPop input{width:100%;accent-color:var(--cy)}
 
@@ -194,7 +196,9 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
     </div>
     <div class="seg"><button id="audioBtn" title="音量" aria-label="音量"><svg class="i" viewBox="0 0 16 16"><path d="M2 6v4h3l4 3V3L5 6zM11.5 5.5c1.3 1.4 1.3 3.6 0 5M13.5 3.5c2.4 2.5 2.4 6.5 0 9"/></svg></button></div>
   </div>
+  <div id="audioBack" hidden></div>
   <div id="audioPop" hidden>
+    <div id="buildTag">v15</div>
     <label>効果音<input id="volSfx" type="range" min="0" max="100" value="85"></label>
     <label>音楽<input id="volBgm" type="range" min="0" max="100" value="70"></label>
   </div>
@@ -1754,18 +1758,14 @@ $('logCopy').addEventListener('click',()=>{
 $('reviewBtn').addEventListener('click',()=>{ A.click(); setReview(true); });
 $('reviewBack').addEventListener('click',()=>{ A.click(); setReview(false); });
 [0,1,2,4].forEach(k=>{ $('sp'+k).addEventListener('click',()=>setSpeed(k)); $('sp'+k).addEventListener('pointerenter',()=>A.hover()); });
+// while the sound panel is open, a full-screen layer behind it catches any tap outside
+function setAudioPop(open){ $('audioPop').hidden=!open; $('audioBack').hidden=!open; }
 $('audioBtn').addEventListener('click',()=>{
   $('audioPop').style.top=($('audioBtn').getBoundingClientRect().bottom+6)+'px'; // the HUD wraps on phones
-  $('audioPop').hidden=!$('audioPop').hidden; A.click();
+  setAudioPop(true); A.click();
 });
-// a tap outside closes the sound panel; on the map that tap does nothing else
-const closeAudioPop=e=>{
-  if($('audioPop').hidden||$('audioPop').contains(e.target)||$('audioBtn').contains(e.target)) return;
-  $('audioPop').hidden=true;
-  if(e.target===cv) e.stopPropagation();
-};
-document.addEventListener('pointerdown',closeAudioPop,true);
-document.addEventListener('touchstart',closeAudioPop,{capture:true,passive:true});
+$('audioBack').addEventListener('pointerdown',e=>{ e.preventDefault(); setAudioPop(false); });
+$('audioBack').addEventListener('click',()=>setAudioPop(false));
 function applyVol(){
   A.sfxVol=+$('volSfx').value/100; A.bgmVol=+$('volBgm').value/100;
   if(A.ctx){ A.sfxBus.gain.setTargetAtTime(A.sfxVol,A.now(),.02); A.bgmBus.gain.setTargetAtTime(A.bgmVol,A.now(),.02); }
