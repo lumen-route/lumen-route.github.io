@@ -228,7 +228,7 @@ svg.i{width:15px;height:15px;display:block;fill:none;stroke:currentColor;stroke-
   </div>
   <div id="audioBack" hidden></div>
   <div id="audioPop" hidden>
-    <div id="buildTag">v17 2面試作</div>
+    <div id="buildTag">v18 2面試作</div>
     <label>効果音<input id="volSfx" type="range" min="0" max="100" value="85"></label>
     <label>音楽<input id="volBgm" type="range" min="0" max="100" value="70"></label>
   </div>
@@ -309,7 +309,8 @@ const COST = {
 };
 const CITY_CAP = 16;
 const POW = [1,2,4,7];          // power used by a DC at each level (stage 2)
-const SEA = {cost:1500,up:[1400,3200],time:4,upkeep:1,perPair:3,repair:400};
+const SEA = {cost:1500,grow:1.7,up:[1400,3200],time:4,upkeep:1,repair:400};
+const POWER_BUY = {city:{cost:4000,grow:1.6,amt:2},cold:{cost:2500,grow:1.5,amt:4},days:1};
 const REGION_CAP = 5;           // cities per region
 const STAGE2 = [
   {key:'ASIA',name:'東アジア',short:'アジア',off:0,  pow:8, open:0,col:0,row:0,codes:['NRT','HKG','SIN','ICN','TPE','PEK']},
@@ -322,7 +323,18 @@ const isS2=()=>G&&G.stage===2;
 const linkTime=l=>l.sea?SEA.time:l.len/LINK.speed[l.tier];
 const linkUpCost=l=>l.sea?SEA.up[l.tier]:COST.linkUp(l.len,l.tier+1);
 const crossesSea=(a,b)=>isS2()&&a.reg!==b.reg;
-const linkCost=(a,b)=>crossesSea(a,b)?SEA.cost:COST.link(dist(a,b));
+const seaPrice=(i,j)=>Math.round(SEA.cost*Math.pow(SEA.grow,seaCount(i,j))/50)*50;
+const linkCost=(a,b)=>crossesSea(a,b)?seaPrice(a.reg,b.reg):COST.link(dist(a,b));
+const powerPlan=r=>r.cold?POWER_BUY.cold:POWER_BUY.city;
+const powerPrice=r=>{ const p=powerPlan(r); return Math.round(p.cost*Math.pow(p.grow,r.powBought)/100)*100; };
+function buyPower(i){
+  const r=G.regions[i], c=powerPrice(r); if(!pay(c)) return;
+  const amt=powerPlan(r).amt;
+  r.powBought++; r.powQ.push({at:G.t+DAY*POWER_BUY.days,amt});
+  logEv(`電力増設 ${r.name} +${amt} ${yen(c)}`); A.upgrade(1);
+  toast(`${r.name}の電力を増設中`,`1日後に枠が ${amt} 増えます`);
+  refreshInspector(true);
+}
 function regionAt(x,y){
   if(!isS2()) return -1;
   for(let i=0;i<G.regions.length;i++){ const r=G.regions[i]; if(x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h) return i; }
@@ -610,7 +622,7 @@ function newGame(demo){
   } else if(G.stage===2){
     G.credits=1200;
     const m=10, cw=(w-m*3)/2, ch=(h-m*3)/2;
-    G.regions=STAGE2.map(r=>({...r,codes:r.codes.slice().sort(()=>Math.random()-.5),x:m+r.col*(cw+m),y:m+r.row*(ch+m),w:cw,h:ch,opened:r.open===0,tm:0}));
+    G.regions=STAGE2.map(r=>({...r,codes:r.codes.slice().sort(()=>Math.random()-.5),x:m+r.col*(cw+m),y:m+r.row*(ch+m),w:cw,h:ch,opened:r.open===0,tm:0,powBought:0,powQ:[]}));
     for(const r of G.regions) r.tm=regionWave(r);
     const a=G.regions[0];
     addDC(0,a.x+a.w/2,a.y+a.h/2+10,true);
@@ -677,7 +689,7 @@ function buildLog(){
   L.push('');
   if(G.stage===2){
     L.push('[地域]');
-    G.regions.forEach((r,i)=>{ const ns=G.nodes.filter(n=>n.reg===i); L.push(`${r.name} ${r.opened?'開放':'未開放'} 電力${regionPower(i)}/${r.pow} 街${ns.filter(n=>n.type==='city').length} DC${ns.filter(n=>n.type==='dc').length} 損失${ns.reduce((a,n)=>a+(n.lost||0),0)} 遅延${ns.reduce((a,n)=>a+(n.lateN||0),0)}`); });
+    G.regions.forEach((r,i)=>{ const ns=G.nodes.filter(n=>n.reg===i); L.push(`${r.name} ${r.opened?'開放':'未開放'} 電力${regionPower(i)}/${r.pow} 増設${r.powBought}回 街${ns.filter(n=>n.type==='city').length} DC${ns.filter(n=>n.type==='dc').length} 損失${ns.reduce((a,n)=>a+(n.lost||0),0)} 遅延${ns.reduce((a,n)=>a+(n.lateN||0),0)}`); });
     L.push('');
     L.push('[海底ケーブル]');
     const sea=G.links.filter(l=>l.sea);
@@ -740,7 +752,6 @@ function buildLink(a,b,free){
   const len=dist(a,b), c=linkCost(a,b), sea=crossesSea(a,b);
   if(sea){
     if(a.type!=='dc'||b.type!=='dc'){ fail('地域をまたぐ線はDC同士だけです'); return null; }
-    if(seaCount(a.reg,b.reg)>=SEA.perPair){ fail(`この地域の間は${SEA.perPair}本までです`); return null; }
   }
   if(!free&&!pay(c)) return null;
   const l=makeLink(a,b); l.spent=free?0:c; l.sea=sea;
@@ -763,7 +774,7 @@ function upgradeLink(l){
 function upgradeNode(n){
   const tbl=COST.dcUp;
   if(n.type!=='dc'||n.lvl>=tbl.length) return;
-  if(isS2()){ const need=POW[n.lvl+1]-POW[n.lvl], r=G.regions[n.reg], left=r.pow-regionPower(n.reg); if(need>left){ fail(`${r.name}の電力枠が足りません（あと${left}）`); return; } }
+  if(isS2()){ const need=POW[n.lvl+1]-POW[n.lvl], r=G.regions[n.reg], left=r.pow-regionPower(n.reg); if(need>left){ fail(`${r.name}の電力枠が足りません（あと${left}）。下で増設できます`); return; } }
   const c=tbl[n.lvl]; if(!pay(c)) return;
   n.lvl++; n.spent+=c; n.pulse=1; G.upgrades++;
   logEv(`増強 ${logName(n)} → Lv${n.lvl+1}`);
@@ -777,7 +788,7 @@ function placeDC(s,x,y){
   if(isS2()){
     const i=regionAt(x,y), r=G.regions[i];
     if(r&&!r.opened){ fail(`${r.name}は DAY ${r.open+1} に開放されます`); return null; }
-    if(r&&r.pow-regionPower(i)<POW[0]){ fail(`${r.name}の電力枠が一杯です`); return null; }
+    if(r&&r.pow-regionPower(i)<POW[0]){ fail(`${r.name}の電力枠が一杯です。DCを選ぶと増設できます`); return null; }
   }
   if(!clearSpot(x,y)){ fail('ここには置けません'); return null; }
   if(!pay(COST.dc)) return null;
@@ -863,7 +874,7 @@ function loss(p,n){
   if(G.demo) return;
   G.trust=Math.max(0,G.trust-.5);
   n.alert=1; n.lost=(n.lost||0)+1; n.dayLost++; G.svcStat[p.svc].lost++; n.lostBy[p.svc]++; n.recBy[p.svc]++; n.lostRec++; n.recS[p.svc]++;
-  if(G.sparks.length<260){ for(let i=0;i<5;i++) spark(n.x,n.y,'#ff3b5c',130); }
+  if(G.sparks.length<SPARK_MAX[qual]){ for(let i=0;i<5;i++) spark(n.x,n.y,'#ff3b5c',130); }
   A.drop();
 }
 // a busy DC hands work to a directly linked DC of the same service when that clears it sooner
@@ -887,7 +898,7 @@ function sharePacket(p,n){
   peer.inb++; n.shareOut++; peer.shareIn++;
   G.flying.push(p);
   if(!G.demo){
-    if(G.rings.length<70) ring(n.x,n.y,SVC[n.svc].color,24);
+    if(G.rings.length<RING_MAX[qual]) ring(n.x,n.y,SVC[n.svc].color,24);
     A.share();
     if(!G.sharedOnce){ G.sharedOnce=true; toast('DC間の融通を開始','混雑したDCから、直接つないだ同じサービスのDCへ自動で流します'); }
   }
@@ -916,7 +927,7 @@ function deliver(p,n){
   G.credits+=got; G.revenue+=got; G.dayRev+=got; G.revEMA+=got; G.svcStat[p.svc].del++;
   if(ontime){ G.trust=Math.min(100,G.trust+.045); G.streak++; if(G.streak>G.bestStreak) G.bestStreak=G.streak; }
   else { G.late++; G.dayLate++; n.lateN++; G.svcStat[p.svc].late++; G.trust=Math.max(0,G.trust-.03); G.streak=0; }
-  if(G.rings.length<70) ring(n.x,n.y,s.color,ontime?44:26);
+  if(G.rt-(n.ringT||0)>.28&&G.rings.length<RING_MAX[qual]){ n.ringT=G.rt; ring(n.x,n.y,s.color,ontime?44:26); }
   if(G.t-n.floatT>.33){ n.floatT=G.t; G.floats.push({x:n.x,y:n.y-34,txt:'+¥'+Math.round(got),c:ontime?s.color:'#8a8fc7',life:1}); }
   A.deliver(p.svc,ontime);
   const ms=MILESTONES[G.msIdx];
@@ -1077,7 +1088,9 @@ function scheduleWorld(){
   }
   if(G.stage===2){
     for(const r of G.regions) if(!r.opened&&G.day>=r.open) openRegion(r);
-    if(G.day>=1.3) coach('sea','海底ケーブル',`地域をまたぐ線はDC同士だけで引けます（${yen(SEA.cost)}）。片道約${SEA.time}秒かかるので、動画とAIは間に合いますが、ゲームは必ず遅れます。`);
+    for(const r of G.regions) while(r.powQ.length&&r.powQ[0].at<=G.t){ const q=r.powQ.shift(); r.pow+=q.amt; ring(r.x+r.w/2,r.y+r.h/2,'#ffd23f',150); A.good(); logEv(`電力完成 ${r.name} 枠${r.pow}`); toast(`${r.name}の電力が完成`,`電力枠が ${r.pow} になりました`,'gold'); refreshInspector(true); }
+    if(G.regions.some((r,i)=>r.opened&&regionPower(i)>=r.pow-1)) coach('powerbuy','電力枠は買い足せます',`DCを${TAP}すると、その地域の電力を増設できます。完成まで1日かかり、買うほど高くなります。`);
+    if(G.day>=1.3) coach('sea','海底ケーブル',`地域をまたぐ線はDC同士だけで引けます（${yen(SEA.cost)}から。同じ地域の間に増やすほど高くなります）。片道約${SEA.time}秒かかるので、動画とAIは間に合いますが、ゲームは必ず遅れます。`);
     if(G.t>=G.nextCity+DAY*.25){
       const open=G.regions.filter(r=>r.opened&&!r.cold), cnt=r=>G.nodes.filter(n=>n.type==='city'&&G.regions[n.reg]===r).length;
       const r=open.filter(x=>cnt(x)<REGION_CAP).sort((a,b)=>cnt(a)-cnt(b))[0];
@@ -1186,7 +1199,7 @@ function adviseLink(l){
 function adviseDC(d){
   if(isS2()&&d.lvl<COST.dcUp.length){
     const r=G.regions[d.reg];
-    if(POW[d.lvl+1]-POW[d.lvl]>r.pow-regionPower(d.reg)) return {txt:`${r.name}の電力枠が一杯で ${d.code} を増強できません。別の地域の同じサービスのDCへ、海底ケーブルで逃がしましょう`,n:d,cap:'ここから線を引く'};
+    if(POW[d.lvl+1]-POW[d.lvl]>r.pow-regionPower(d.reg)) return {txt:`${r.name}の電力枠が一杯です。${d.code} を${TAP}して電力を増設するか、別の地域のDCへ海底ケーブルで逃がしましょう`,n:d,cap:TAP};
   }
   if(d.lvl<COST.dcUp.length) return {txt:`${d.code} の処理が限界。${TAP}して増強しましょう（${yen(COST.dcUp[d.lvl])}）`,n:d,cap:TAP};
   return {txt:`${d.code} は最大レベルで限界。同じサービスのDCを増設して、直接つなぎましょう`,tool:'dc'+d.svc};
@@ -1312,9 +1325,16 @@ const bloomA=document.createElement('canvas'), bloomB=document.createElement('ca
 const bgCv=document.createElement('canvas');
 const ba=bloomA.getContext('2d',{alpha:false}), bb=bloomB.getContext('2d',{alpha:false});
 const hasFilter=typeof ctx.filter==='string';
+const RING_MAX=[10,22,40], SPARK_MAX=[40,110,220], DPR_MUL=[.6,.8,1];
+let qual=2, frameAvg=0, qualT=0;  // drawing quality, lowered once if a device cannot keep up
+function watchFrames(raw,now){
+  if(raw>.25||state!=='play') return;            // ignore tab switches and menus
+  frameAvg+=(raw-frameAvg)*.04;
+  if(qual>0&&frameAvg>.03&&now-qualT>3500){ qual--; qualT=now; frameAvg=.016; resize(); }
+}
 let W=0,H=0,DPR=1;
 function resize(){
-  DPR=Math.min(devicePixelRatio||1,innerWidth>1800?1.25:1.75);
+  DPR=Math.min(devicePixelRatio||1,innerWidth>1800?1.25:1.75)*DPR_MUL[qual];
   W=innerWidth; H=innerHeight;
   cv.width=W*DPR|0; cv.height=H*DPR|0;
   bloomA.width=Math.max(2,cv.width>>2); bloomA.height=Math.max(2,cv.height>>2);
@@ -1407,9 +1427,9 @@ function drawRegionLabels(){
     const r=G.regions[i], px=view.ox+r.x*view.s+8, py=view.oy+r.y*view.s+13;
     ctx.font="700 12px 'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic UI',Meiryo,sans-serif";
     if(!r.opened){ ctx.fillStyle='#8f8fc0'; ctx.fillText(`${r.name}  DAY ${r.open+1} に開放`,px,py); continue; }
-    const used=regionPower(i), full=used>=r.pow;
+    const used=regionPower(i), full=used>=r.pow, soon=r.powQ.reduce((a,q)=>a+q.amt,0);
     ctx.fillStyle=r.cold?'#8fd4ff':'#e4e9ff'; ctx.fillText(r.name,px,py);
-    ctx.fillStyle=full?'#ff8da0':'#ffd23f'; ctx.fillText(`電力 ${used}/${r.pow}`,px,py+15);
+    ctx.fillStyle=full?'#ff8da0':'#ffd23f'; ctx.fillText(`電力 ${used}/${r.pow}${soon?` (+${soon}建設中)`:''}`,px,py+15);
     if(!r.cold){ const up=regionWave(r,1.5)>r.tm; ctx.fillStyle=r.tm>1?'#ffd23f':'#9aa0d8'; ctx.fillText(`需要 ${r.tm.toFixed(1)}倍 ${up?'▲':'▼'}`,px,py+30); }
   }
   ctx.textAlign='center';
@@ -1482,8 +1502,7 @@ function drawPacket(p){
     const l=p.link, from=p.dir===0?l.a:l.b, to=p.dir===0?l.b:l.a;
     const k=Math.min(p.pos*l.len,26)/l.len;
     const tx=from.x+(to.x-from.x)*(p.pos-k), ty=from.y+(to.y-from.y)*(p.pos-k);
-    const g=ctx.createLinearGradient(tx,ty,p.x,p.y); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,c);
-    ctx.strokeStyle=g; ctx.lineWidth=2.2; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(p.x,p.y); ctx.stroke();
+    if(qual>0){ ctx.strokeStyle=c; ctx.globalAlpha=.45; ctx.lineWidth=2.2; ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.globalAlpha=1; }
   }
   ctx.fillStyle=c;
   if(p.junk){ ctx.fillRect(p.x-3,p.y-3,6,6); return; }
@@ -1564,14 +1583,14 @@ function draw(t){
   drawGhost(t);
   // bloom: two blurred copies of the frame, added back
   ctx.setTransform(1,0,0,1,0,0);
-  ba.filter=hasFilter?`blur(${2.2}px)`:'none';
+  ba.filter=hasFilter&&qual>1?`blur(${2.2}px)`:'none';
   ba.drawImage(cv,0,0,bloomA.width,bloomA.height);
-  bb.filter=hasFilter?`blur(${2}px)`:'none';
+  bb.filter=hasFilter&&qual>1?`blur(${2}px)`:'none';
   bb.drawImage(bloomA,0,0,bloomB.width,bloomB.height);
   ctx.globalCompositeOperation='lighter';
   ctx.imageSmoothingEnabled=true;
   ctx.globalAlpha=.72; ctx.drawImage(bloomA,0,0,cv.width,cv.height);
-  ctx.globalAlpha=.62; ctx.drawImage(bloomB,0,0,cv.width,cv.height);
+  if(qual>0){ ctx.globalAlpha=.62; ctx.drawImage(bloomB,0,0,cv.width,cv.height); }
   ctx.globalAlpha=1;
   ctx.drawImage(bgCv,0,0);
   // daylight wash follows the in-game clock
@@ -1837,6 +1856,7 @@ function refreshInspector(force){
         <dt>融通 送 / 受</dt><dd data-v="share"></dd>
         <dt>単価 / 納期</dt><dd>${yen(s.pay)} / ${s.target}s</dd>
         <dt>維持費</dt><dd>¥${(.8*(1+o.lvl*1.1)).toFixed(1)}/s</dd></dl>`;
+      if(isS2()){ const r=G.regions[o.reg], pc=powerPrice(r); btns+=`<button class="act" data-a="pow" data-c="${pc}">${r.short}の電力 +${powerPlan(r).amt} ${yen(pc)}</button>`; if(r.powQ.length) h+=`<p class="note">増設中の電力があります（完成まで最大1日）。</p>`; }
       if(o.lvl<tbl.length) btns+=`<button class="act" data-a="upn" data-c="${tbl[o.lvl]}">Lv${o.lvl+2} へ増強 ${yen(tbl[o.lvl])}</button>`;
       else h+=`<p class="note">最大レベルです。同じサービスのDCを増設して直接つなぐと、混雑時に負荷を融通します。</p>`;
       if(o.adj.length&&!reviewing) h+=`<p class="note">撤去すると、つながっている回線${o.adj.length}本も一緒に消えます。</p>`;
@@ -1850,7 +1870,7 @@ function refreshInspector(force){
       if(b.classList.contains('hold')){ holdButton(b,()=>{ if(b.dataset.a==='rm') removeLink(o); else removeNode(o); }); return; }
       b.addEventListener('click',()=>{
         const a=b.dataset.a;
-        if(a==='up') upgradeLink(o); else if(a==='repair') repair(o);
+        if(a==='pow') buyPower(o.reg); else if(a==='up') upgradeLink(o); else if(a==='repair') repair(o);
         else if(a==='upn') upgradeNode(o);
       });
     });
@@ -2042,7 +2062,8 @@ function intensityTarget(){ return clamp((G.tpEMA)/16,0,1); }
 let last=performance.now(), acc=0, hudT=0;
 const STEP=1/30;
 function frame(now){
-  const dt=Math.min(.05,(now-last)/1000); last=now;
+  const raw=(now-last)/1000, dt=Math.min(.05,raw); last=now;
+  watchFrames(raw,now);
   if(G){
     if(state==='play'||state==='title'){
       acc+=dt*G.speed;
